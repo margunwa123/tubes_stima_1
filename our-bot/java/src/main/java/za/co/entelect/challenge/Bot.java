@@ -39,8 +39,16 @@ public class Bot {
         String command = "";
 
         // Greedy - aktifkan iron curtain bila bisa diaktifkan
-        if (getEnergy(PlayerType.A) >= 100 && gameState.gameDetails.round >= 30) {
-            command = placeBuildingIn(BuildingType.IRON_CURTAIN, 1, 1);
+        if (getEnergy(PlayerType.A) >= 100 && gameState.gameDetails.round >= 30 && gameState.getPlayers().get(0).ironCurtainAvailable) {
+            boolean found = false;
+            for(int i = 0 ; i <= 7 && !found ; i++) {
+                for(int j = 0 ; j <= 7 && !found ; j++) {
+                    if(isCellEmpty(i, j)) {
+                        command = placeBuildingIn(BuildingType.IRON_CURTAIN, i, j);
+                        found   = true;
+                    }
+                }
+            }
         }
 
         int myEnergyBuildings   = getMyBuildingsByType(BuildingType.ENERGY).size();
