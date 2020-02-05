@@ -77,6 +77,23 @@ public class Bot {
         }
 
         //Greedy - bangun attack building di baris dimana baris paling lemah
+        if(command.equals("")){
+            int minRow;
+            int minValue = 1000;
+            for(int i = 0; i <= gameState.gameDetails.mapHeight; i++){
+                int enemyAttackOnRow = getAllBuildingsForPlayer(PlayerType.B, b -> b.buildingType == BuildingType.ATTACK, i).size();
+                int enemyDefenseOnRow = getAllBuildingsForPlayer(PlayerType.B, b -> b.buildingType == BuildingType.DEFENSE, i).size();
+                int enemyEnergyOnRow = getAllBuildingsForPlayer(PlayerType.B, b -> b.buildingType == BuildingType.ENERGY, i).size();
+
+                int enemyRowHealth = (5 * enemyAttackOnRow) + (20 * enemyDefenseOnRow) + (5 * enemyEnergyOnRow);
+                if(minValue > enemyRowHealth){
+                    minValue = enemyRowHealth;
+                    minRow = i;
+                }
+            }
+            command = placeBuildingInRowFromBack(BuildingType.ATTACK, minRow);
+        }
+
         //If there is a row where I don't have energy and there is no enemy attack building, then build energy in the back row.
         if (command.equals("")) {
             for (int i = 0; i < gameState.gameDetails.mapHeight; i++) {
@@ -314,6 +331,10 @@ public class Bot {
      **/
     private int getPriceForBuilding(BuildingType buildingType) {
         return gameState.gameDetails.buildingsStats.get(buildingType).price;
+    }
+
+    private int getBuildingHealth(BuildingType buildingType){
+        return gameState.gameDetails.buildingStats.get(buildingType).health;
     }
 
     /**
