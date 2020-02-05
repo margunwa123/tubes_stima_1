@@ -38,72 +38,45 @@ public class Bot {
     public String run() {
         String command = "";
 
-        //Greedy - aktifkan iron curtain bila bisa diaktifkan
-        if (command.equals("")) {
-            if (canAffordBuilding(BuildingType.IRON_CURTAIN) && gameState.gameDetails.round >= 30) {
-                command = placeBuildingIn(BuildingType.IRON_CURTAIN, 1, 1);
-            }
+        // Greedy - aktifkan iron curtain bila bisa diaktifkan
+        if (getEnergy(PlayerType.A) >= 100 && gameState.gameDetails.round >= 30) {
+            command = placeBuildingIn(BuildingType.IRON_CURTAIN, 1, 1);
         }
 
-        //Greedy - dapatkan row dimana musuh attack buildingnya terbanyak, dan bangun defense building misalnya belum ada
-        List<Integer> enemyAttackerByRows = getEnemyAttackersByRows();
-        
         int myEnergyBuildings   = getMyBuildingsByType(BuildingType.ENERGY).size();
-        int myAttackBuildings   = getMyBuildingsByType(BuildingType.ATTACK).size();
-        //Misalnya energy buildingnya kurang dari 9, bangun energy building dibagian belakang map
+        //Greedy - Misalnya energy buildingnya kurang dari 9, bangun energy building dibagian belakang map
         if (myEnergyBuildings < 9) {
             for (int i = 0; i < gameState.gameDetails.mapHeight; i++) {
                 int enemyAttackOnRow = getAllBuildingsForPlayer(PlayerType.B, b -> b.buildingType == BuildingType.ATTACK, i).size();
                 int myEnergyOnRow = getAllBuildingsForPlayer(PlayerType.A, b -> b.buildingType == BuildingType.ENERGY, i).size();
 
-                if (enemyAttackOnRow == 0 && myEnergyOnRow <= 1) {
+                if (enemyAttackOnRow == 0 && myEnergyOnRow == 0) {
                     if (canAffordBuilding(BuildingType.ENERGY))
                         command = placeBuildingInRowFromBack(BuildingType.ENERGY, i);
                     break;
                 }
                 //Misalnya row terkiri udah diisi, bangun energy building di row paling kiri yang bisa dibangun
-                // if (enemyAttackOnRow == 0 && myEnergyOnRow == 1) {
-                //     if (canAffordBuilding(BuildingType.ENERGY))
-                //         command = placeBuildingInRowFromBack(BuildingType.ENERGY, i);
-                //     break;
-                // }
+                if (enemyAttackOnRow == 0 && myEnergyOnRow == 1) {
+                    if (canAffordBuilding(BuildingType.ENERGY))
+                        command = placeBuildingInRowFromBack(BuildingType.ENERGY, i);
+                }
             }
         }
 
-        //Greedy - cari attack building musuh terbanyak dimana aku belom punya defense, lalu buat tembok dari depan
+        //Greedy - dapatkan row dimana musuh attack buildingnya terbanyak, dan bangun defense building misalnya belum ada
         if (command.equals("")) {
-            List<Integer> enemyAttacks = new ArrayList<>();
-
-            for (int i = 0; i< gameState.gameDetails.mapHeight ; i++) {
-                int enemyAttackOnRow = getAllBuildingsForPlayer(PlayerType.B, b -> b.buildingType == BuildingType.ATTACK, i).size();
-                int myDefenseOnRow   = getAllBuildingsForPlayer(PlayerType.A, b -> b.buildingType == BuildingType.DEFENSE, i).size();
-            
-                if (enemyAttackOnRow > 0 && myDefenseOnRow == 0) {
-                    enemyAttacks.add(enemyAttackOnRow);
+            List<Integer> enemyAttackerEachRows = getEnemyAttackersEachRows();
+            int maxNumberOfEnemyAttacker = Collections.max(enemyAttackerEachRows);
+            if (maxNumberOfEnemyAttacker > 0) {
+                int mostAttackedRow = enemyAttackerEachRows.indexOf(maxNumberOfEnemyAttacker);
+                int defenseOnRow    = getAllBuildingsForPlayer(PlayerType.A, b -> b.buildingType == BuildingType.DEFENSE, mostAttackedRow).size();
+                if (defenseOnRow == 0) {
+                    command = placeBuildingInRowFromFront(BuildingType.DEFENSE, mostAttackedRow);
                 }
-                else {
-                    enemyAttacks.add(0);
-                }
-            }
-            int maxAttacker = Collections.max(enemyAttacks);
-            if (maxAttacker > 0) {
-                command = placeBuildingInRowFromFront(BuildingType.DEFENSE, enemyAttacks.indexOf(maxAttacker));
             }
         }
-        //If the enemy has an attack building and I don't have a blocking wall, then block from the front.
-        // for (int i = 0; i < gameState.gameDetails.mapHeight; i++) {
-        //     int enemyAttackOnRow = getAllBuildingsForPlayer(PlayerType.B, b -> b.buildingType == BuildingType.ATTACK, i).size();
-        //     int myDefenseOnRow = getAllBuildingsForPlayer(PlayerType.A, b -> b.buildingType == BuildingType.DEFENSE, i).size();
-            
-        //     if (enemyAttackOnRow > 0 && myDefenseOnRow == 0) {
-        //         if (canAffordBuilding(BuildingType.DEFENSE))
-        //             command = placeBuildingInRowFromFront(BuildingType.DEFENSE, i);
-        //         else
-        //             command = "";
-        //         break;
-        //     }
-        // }
 
+        //Greedy - bangun attack building di baris dimana baris paling lemah
         //If there is a row where I don't have energy and there is no enemy attack building, then build energy in the back row.
         if (command.equals("")) {
             for (int i = 0; i < gameState.gameDetails.mapHeight; i++) {
@@ -277,9 +250,16 @@ public class Bot {
                 .filter(c -> c.x == x && isCellEmpty(x, c.y))
                 .collect(Collectors.toList());
     }
-
-    private List<Integer> getEnemyAttackersByRows() {
-        List<Integer> res;
+    /**
+     * Get all list of integer of all enemy attackers each row
+     *
+     * @return the result
+     **/
+    private List<Integer> getEnemyAttackersEachRows() {
+        List<Integer> res = new ArrayList<>();
+        for (int i = 0; i < gameState.gameDetails.mapHeight ; i++) {
+            res.add(getAllBuildingsForPlayer(PlayerType.B, b -> b.buildingType == BuildingType.ATTACK, i).size());
+        }
         return res;
     }
     /**
