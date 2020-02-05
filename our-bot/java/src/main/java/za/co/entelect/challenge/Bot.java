@@ -85,8 +85,27 @@ public class Bot {
         }
         //! ini bot tubes stima
         //Greedy - bangun attack building di baris dimana baris paling lemah
+        if(command.equals("")){
+            int minRow = -99;
+            int minValue = 1000;
+            for(int i = 0; i < gameState.gameDetails.mapHeight; i++){
+                int enemyAttackOnRow = getAllBuildingsForPlayer(PlayerType.B, b -> b.buildingType == BuildingType.ATTACK, i).size();
+                int enemyDefenseOnRow = getAllBuildingsForPlayer(PlayerType.B, b -> b.buildingType == BuildingType.DEFENSE, i).size();
+                int enemyEnergyOnRow = getAllBuildingsForPlayer(PlayerType.B, b -> b.buildingType == BuildingType.ENERGY, i).size();
 
-        //Kalo aku gapunya attack building di suatu row, bangun di row itu attack building di baris belakang
+                int enemyRowHealth = (5 * enemyAttackOnRow) + (20 * enemyDefenseOnRow) + (5 * enemyEnergyOnRow);
+                if(minValue > enemyRowHealth){
+                    minValue = enemyRowHealth;
+                    minRow = i;
+                }
+            }
+            if (minRow != -99){
+                if (canAffordBuilding(BuildingType.ATTACK)) {
+                    command = placeBuildingInRowFromBack(BuildingType.ATTACK, minRow);
+                }
+            }
+        }
+
         
         if (command.equals("")) {
             
@@ -315,6 +334,10 @@ public class Bot {
      **/
     private int getPriceForBuilding(BuildingType buildingType) {
         return gameState.gameDetails.buildingsStats.get(buildingType).price;
+    }
+
+    private int getBuildingHealth(BuildingType buildingType){
+        return gameState.gameDetails.buildingsStats.get(buildingType).health;
     }
 
     /**
