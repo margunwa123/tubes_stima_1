@@ -50,9 +50,9 @@ public class Bot {
                 }
             }
         }
-
-        int myEnergyBuildings   = getMyBuildingsByType(BuildingType.ENERGY).size();
+        
         //Greedy - Misalnya energy buildingnya kurang dari 9, bangun energy building dibagian belakang map
+        int myEnergyBuildings   = getMyBuildingsByType(BuildingType.ENERGY).size();
         if (myEnergyBuildings < 9) {
             for (int i = 0; i < gameState.gameDetails.mapHeight; i++) {
                 int enemyAttackOnRow = getAllBuildingsForPlayer(PlayerType.B, b -> b.buildingType == BuildingType.ATTACK, i).size();
@@ -83,23 +83,16 @@ public class Bot {
                 }
             }
         }
-
+        //! ini bot tubes stima
         //Greedy - bangun attack building di baris dimana baris paling lemah
-        //If there is a row where I don't have energy and there is no enemy attack building, then build energy in the back row.
-        if (command.equals("")) {
-            for (int i = 0; i < gameState.gameDetails.mapHeight; i++) {
-                int enemyAttackOnRow = getAllBuildingsForPlayer(PlayerType.B, b -> b.buildingType == BuildingType.ATTACK, i).size();
-                int myEnergyOnRow = getAllBuildingsForPlayer(PlayerType.A, b -> b.buildingType == BuildingType.ENERGY, i).size();
 
-                if (enemyAttackOnRow == 0 && myEnergyOnRow == 0) {
-                    if (canAffordBuilding(BuildingType.ENERGY))
-                        command = placeBuildingInRowFromBack(BuildingType.ENERGY, i);
-                    break;
-                }
-            }
+        //Kalo aku gapunya attack building di suatu row, bangun di row itu attack building di baris belakang
+        
+        if (command.equals("")) {
+            
         }
 
-        //If I have a defense building on a row, then build an attack building behind it.
+        //If there is a row where I don't have energy and there is no enemy attack building, then build energy in the back row.
         if (command.equals("")) {
             for (int i = 0; i < gameState.gameDetails.mapHeight; i++) {
                 if (getAllBuildingsForPlayer(PlayerType.A, b -> b.buildingType == BuildingType.DEFENSE, i).size() > 0
