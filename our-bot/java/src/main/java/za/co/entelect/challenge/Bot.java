@@ -7,8 +7,9 @@ import za.co.entelect.challenge.enums.BuildingType;
 import za.co.entelect.challenge.enums.PlayerType;
 
 import java.util.Collections;
-
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.ArrayList;
 import java.util.Optional;
 import java.util.function.Predicate;
@@ -27,7 +28,6 @@ public class Bot {
         String command = "";
 
         //? Enemy buildings
-        List<Integer> enemyEnergyEachRows   = getBuildingTypeEachRow(PlayerType.B, BuildingType.ENERGY);
         List<Integer> enemyAttackerEachRows = getBuildingTypeEachRow(PlayerType.B, BuildingType.ATTACK);
         List<Integer> enemyDefenseEachRows  = getBuildingTypeEachRow(PlayerType.B, BuildingType.DEFENSE);
 
@@ -37,7 +37,7 @@ public class Bot {
         List<Integer> myDefenseEachRows     = getBuildingTypeEachRow(PlayerType.A, BuildingType.DEFENSE);
 
 
-        //$ Greedy - aktifkan iron curtain(bangunan termahal bagi bot kami) bila bisa diaktifkan
+        //$ Greedy - aktifkan iron curtain (bangunan terbaik) bila bisa diaktifkan
         if (getEnergy(PlayerType.A) >= 100 && gameState.gameDetails.round >= 30 && gameState.getPlayers().get(0).ironCurtainAvailable) {
             boolean found = false;
             for(int i = 0 ; i <= 7 && !found ; i++) {
@@ -86,25 +86,56 @@ public class Bot {
             }
         }
 
-        //$ Greedy - bangun attack building di baris dimana baris musuh paling lemah
-        if(command.equals("")){
-            int minRow = -99;
-            int minValue = 9999;
-            for(int i = 0; i < gameState.gameDetails.mapHeight; i++) {
-                int enemyAttackOnRow  = enemyAttackerEachRows.get(i);
-                int enemyDefenseOnRow = enemyDefenseEachRows.get(i);
-                int enemyEnergyOnRow  = enemyEnergyEachRows.get(i);
-                int myAttackerOnRow   = myAttackerEachRows.get(i);
-                int enemyRowStrength = (10 * enemyAttackOnRow) + (20 * enemyDefenseOnRow) + (5 * enemyEnergyOnRow) - (10 * myAttackerOnRow);
-                
-                if(minValue > enemyRowStrength) {
-                    minValue = enemyRowStrength;
-                    minRow = i;
+        //$ Kalo misal udah ada defense building di tempat attack building musuh terbanyak, bangun defense building di tempat lain yang juga diserang
+        if(command.equals("")) {
+            for(int i = 0 ; i < gameState.gameDetails.mapHeight ; i++) {
+                int enemyAttackOnRow = enemyAttackerEachRows.get(i);
+                int myDefenseOnRow   = myDefenseEachRows.get(i);
+                if(enemyAttackOnRow > 0 && myDefenseOnRow == 0 && canAffordBuilding(BuildingType.DEFENSE)) {
+                    command = placeBuildingInRowFromFront(BuildingType.DEFENSE, i);
                     break;
                 }
             }
-            if (minRow != -99 && canAffordBuilding(BuildingType.ATTACK)){
-                command = placeBuildingInRowFromBack(BuildingType.ATTACK, minRow);
+        }
+
+        //$ Greedy - bangun attack building di baris dimana baris musuh paling lemah
+        if(command.equals("")) {
+            if(canAffordBuilding(BuildingType.ATTACK)) {
+                // Integer pertama merepresentasikan "key" atau row, integer kedua merepresentasikan kekuatan row
+                HashMap<Integer,Integer> enemyRowStrength = new HashMap<Integer,Integer>();
+                for(int i = 0; i < gameState.gameDetails.mapHeight; i++) {
+                    int enemyAttackOnRow  = enemyAttackerEachRows.get(i);
+                    int enemyDefenseOnRow = enemyDefenseEachRows.get(i);
+                    int myAttackerOnRow   = myAttackerEachRows.get(i);
+                    int myDefenseOnRow    = myDefenseEachRows.get(i);
+                    int thisRowStrength   = ((enemyAttackOnRow * 10) + (enemyDefenseOnRow * 10) - (myAttackerOnRow * 10) - (myDefenseOnRow * 10));
+                    enemyRowStrength.put(i,thisRowStrength);
+                }
+
+                // Sort urutan kekuatan lane ( besar ke kecil )
+                List<Integer> sortedRowStrengthAsc = new ArrayList<Integer>();
+                for(int i = 0 ; i < gameState.gameDetails.mapHeight ; i++) {
+                    int minStrength  = 9999;
+                    int rowIndex = 0;
+                    // cari row index yang valuenya paling kecil
+                    for(Map.Entry<Integer,Integer> pair: enemyRowStrength.entrySet()) {
+                        int rowValue = pair.getValue();
+                        if(rowValue < minStrength) {
+                            minStrength = rowValue;
+                            rowIndex = pair.getKey();
+                        }
+                    };
+                    sortedRowStrengthAsc.add(rowIndex); // mengurutkan indeks row dari terkecil ke terbesar
+                    enemyRowStrength.remove(rowIndex);
+                }
+
+                // Taro bangunan attack di row strength terkecil
+                for(int i = 0; i < gameState.gameDetails.mapHeight ; i++) {
+                    if(!isRowFull(sortedRowStrengthAsc.get(i))) {
+                        command = placeBuildingInRowFromBack(BuildingType.ATTACK, sortedRowStrengthAsc.get(i));
+                        break;
+                    }
+                }
             }
         }
 
@@ -188,6 +219,7 @@ public class Bot {
                 .collect(Collectors.toList());
     }
 
+    //? BOOLEAN
     /**
      * Checks if cell at x,y is empty
      *
@@ -205,6 +237,15 @@ public class Bot {
             return cell.getBuildings().size() <= 0;
         } else {
             System.out.println("Invalid cell selected");
+        }
+        return true;
+    }
+    
+    private boolean isRowFull(int row) {
+        for(int i = 0 ; i < gameState.gameDetails.mapWidth/2 ; i++) {
+            if(isCellEmpty(i, row)) {
+                return false;
+            }
         }
         return true;
     }
